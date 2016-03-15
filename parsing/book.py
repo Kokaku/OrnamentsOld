@@ -4,6 +4,7 @@ import sys
 from PIL import Image
 from lxml import etree
 from pymongo import MongoClient
+from page import Page
 
 # This URL allow to search for books in the Google library
 googleBookSearchUrl = "https://www.googleapis.com/books/v1/volumes?q="
@@ -24,9 +25,9 @@ class Book:
 		for zi in zf.infolist():
 			self.size += zi.file_size
 			if zi.filename.endswith(".jp2"):
-				self.handleJp2(zf, zi, populateDB, db)
+				self.handleJp2(zf, zi)
 			elif zi.filename.endswith(".tif"):
-				self.handleTiff(zf, zi, populateDB, db)
+				self.handleTiff(zf, zi)
 			elif zi.filename.endswith(".xml"):
 				self.handleXml(zf, zi)
 
@@ -56,6 +57,8 @@ class Book:
 		self.dimensions = None
 		self.notes = None
 
+		self.pages = list()
+
 	def getSize(self):
 		return self.size
 
@@ -74,63 +77,29 @@ class Book:
 	def getNumTif(self):
 		return self.numTif
 
-	def handleJp2(self, zf, zi, populateDB, db):
+	def handleJp2(self, zf, zi):
 		self.jp2Size += zi.file_size
 		self.numJp2 += 1
-		self.handleImage(zf, zi, populateDB, db)
+		self.handleImage(zf, zi)
 
-	def handleTiff(self, zf, zi, populateDB, db):
+	def handleTiff(self, zf, zi):
 		self.numTif += 1
-		self.handleImage(zf, zi, populateDB, db)
+		self.handleImage(zf, zi)
 
-	def handleImage(self, zf, zi, populateDB, db):
-		def getFirstOrNone(l):
-			if len(l) > 0:
-				return l[0]
-			return None
-
+	def handleImage(self, zf, zi):
 		self.imSize += zi.file_size
 		self.numIm += 1
 		if self.dstDir != None:
 			zf.extract(zi, self.dstDir+self.filename)
 
-		if populateDB:
-			pageId = zi.filename.split('.')[0]
-			pageUrl = "http://dhlabsrv4.epfl.ch/iiif_ornaments/bookm-{0}_{1}/full/full/0/default.jpg".format(self.bookId, pageId)
-			try:
-				im = Image.open(zf.open(zi.filename))
-				dpi = im.info['dpi']
-				dpi = (float(dpi[0].numerator)/dpi[0].denominator, float(dpi[1].numerator)/dpi[1].denominator)
-			except:
-				dpi =  None
-
-			bculXml = "BCUL_{0}.xml".format(self.bookId)
-			metaData = etree.fromstring(zf.read(bculXml))
-			pageXmlId = getFirstOrNone(metaData.xpath('//*[local-name() = "fileGrp"][@USE="image"]/child::*/child::*[@*="{0}"]/parent::*/@ID'.format(zi.filename)))
-			seq = getFirstOrNone(metaData.xpath('//*[local-name() = "fileGrp"][@USE="image"]/child::*/child::*[@*="{0}"]/parent::*/@SEQ'.format(zi.filename)))
-			if pageXmlId != None:
-				admin = getFirstOrNone(metaData.xpath('//*[local-name() = "div"][@TYPE="volume"]/child::*/child::*[@FILEID="{0}"]/parent::*/@ADMID'.format(pageXmlId)))
-				orderLabel = getFirstOrNone(metaData.xpath('//*[local-name() = "div"][@TYPE="volume"]/child::*/child::*[@FILEID="{0}"]/parent::*/@ORDERLABEL'.format(pageXmlId)))
-				if admin != None:
-					admin = admin.split(" ")
-
-			pages = db["BCU_{0}".format(self.bookId)]
-			search = pages.find({"_id": pageId})
-			if search.count() != 0:
-				print "Page {0} has already an entry in BCU_{1}.".format(pageId, self.bookId)
-			else:
-				result = pages.insert_one({"_id" : pageId,
-					"url" : pageUrl,
-					"dpi" : dpi,
-					"seq" : seq,
-					"type" : admin,
-					"orderLabel" : orderLabel})
 
 	def handleXml(self, zf, zi):
 		self.xmlSize += zi.file_size
 
 		if zi.filename == "glr_mods.xml":
 			self.parseGlrMods(zf.read(zi.filename))
+		elif zi.filename.startswith("BCUL_"):
+			self.parseBcul(zf, zf.read(zi.filename))
 		#elif zi.filename == "glr_oai_dc.xml":
 		#	self.parseGlrOaiDc(zf.read(zi.filename))
 
@@ -144,6 +113,53 @@ class Book:
 		self.lang = metaData.xpath('//*[local-name() = "mods"]/*[local-name() = "language"]/child::*/text()')
 		self.dimensions = metaData.xpath('//*[local-name() = "mods"]/*[local-name() = "physicalDescription"]/child::*/text()')
 		self.notes = metaData.xpath('//*[local-name() = "mods"]/*[local-name() = "note"]/text()')
+
+	def parseBcul(self, zf, strFile):
+		def getFirstOrNone(l):
+			if len(l) > 0:
+				return l[0]
+			return None
+
+		pageXmlId = None
+		seq = None
+		admin = None
+		orderLabel = None
+		pageId = None
+		orderLabel = None
+		dpi = None
+
+		metaData = etree.fromstring(strFile)
+		imagesData = metaData.xpath('//*[local-name() = "fileGrp"][@USE="image"]/child::*')
+		pagesData = getFirstOrNone(metaData.xpath('//*[local-name() = "div"][@TYPE="volume"]'))
+		for imageData in imagesData:
+			fileData = getFirstOrNone(imageData.xpath('./child::*'))
+			if fileData != None:
+				pageFilename = fileData.items()[0][1]
+				pageId = pageFilename.split('.')[0]
+				try:
+					im = Image.open(zf.open(pageFilename))
+					dpi = im.info['dpi']
+					dpi = (float(dpi[0].numerator)/dpi[0].denominator, float(dpi[1].numerator)/dpi[1].denominator)
+				except:
+					dpi = None
+				pageUrl = "http://dhlabsrv4.epfl.ch/iiif_ornaments/bookm-{0}_{1}/full/full/0/default.jpg".format(self.bookId, pageId)
+			pageXmlId = imageData.get("ID")
+			seq = imageData.get("SEQ")
+			if pageXmlId != None:
+				pageData = getFirstOrNone(pagesData.xpath('./child::*/child::*[@FILEID="{0}"]/parent::*'.format(pageXmlId)))
+				if pageData != None:
+					admin = pageData.get("ADMID")
+					orderLabel = pageData.get("ORDERLABEL")
+					if admin != None:
+						admin = admin.split(" ")
+
+			self.pages.append({"_id" : pageId,
+					"url" : pageUrl,
+					"dpi" : dpi,
+					"seq" : seq,
+					"type" : admin,
+					"orderLabel" : orderLabel})
+
 
 	def parseGlrOaiDc(self, strFile):
 		metaData = etree.fromstring(zf.read(zi.filename))
@@ -182,7 +198,8 @@ class Book:
 				"genre" : self.genre,
 				"lang" : self.lang,
 				"dimensions" : self.dimensions,
-				"notes" : self.notes})
+				"notes" : self.notes,
+				"pages" : [page for page in self.pages]})
 
 
 
