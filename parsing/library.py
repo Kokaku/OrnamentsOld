@@ -1,5 +1,7 @@
 #!/usr/bin/python
+from multiprocessing import Pool
 import os
+import sys
 import zipfile
 from pymongo import MongoClient
 from book import Book
@@ -12,35 +14,36 @@ def formatSize(num, suffix='B'):
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
-class Library:
-	def __init__(self, srcDir, dstDir, maxParseBook, verbosity, quiet, populateDB, db):
-		self.srcDir = srcDir
-		self.books = list()
+def processBook(args):
+	return Book(*args)
 
-		fileToProccess = len(os.listdir(srcDir))
-		fileProccessed = 0
-		bookProccessed = 0
+class Library:
+
+	def __init__(self, srcDir, dstDir, maxParseBook, verbosity, quiet, populateDB):
+		self.srcDir = srcDir
+		books = list()
 
 		# Read all books contained in the library
 		for filename in os.listdir(srcDir):
-			if verbosity:
-				print filename
-			fileProccessed += 1
-
 			#Only zipped files are considered as book
 			if zipfile.is_zipfile(srcDir+filename):
-				book = Book(filename, srcDir+filename, dstDir, verbosity, populateDB, db)
-				self.books.append(book)
-				bookProccessed += 1
+				book = [filename, srcDir+filename, dstDir, verbosity, populateDB]
+				books.append(book)
 
-			if maxParseBook != None and bookProccessed >= maxParseBook:
-				print "Maximum number of books have been parsed"
+			if maxParseBook != None and bookToProccessed >= maxParseBook:
 				break
 
+
+		threads = Pool(8)
+		self.books = list()
+		bookToProccess = len(books)
+		for book in enumerate(threads.imap_unordered(processBook, books), 1):
 			if not quiet:
-				print "Analysed file {0}/{1}".format(fileProccessed, fileToProccess)
+				print "Analysed book {0}/{1}".format(book[0], bookToProccess)
 				if verbosity:
 					print ""
+			self.books = book[1]
+
 
 	def getListOfBooks(self):
 		return self.books

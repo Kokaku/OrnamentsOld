@@ -12,7 +12,7 @@ googleBookSearchUrl = "https://www.googleapis.com/books/v1/volumes?q="
 googleBookUrl = "https://www.googleapis.com/books/v1/volumes/"
 
 class Book:
-	def __init__(self, filename, path, dstDir, verbosity, populateDB, db):
+	def __init__(self, filename, path, dstDir, verbosity, populateDB):
 		filename = filename.split('.')[0]
 		self.filename = filename
 		self.path = path
@@ -20,6 +20,9 @@ class Book:
 
 		self.initVariables()
 		self.bookId = self.filename.split('-')[1]
+		
+		if verbosity:
+			print filename
 
 		zf = zipfile.ZipFile(path, 'r')
 		for zi in zf.infolist():
@@ -34,7 +37,10 @@ class Book:
 		if verbosity:
 			self.printParsedData()
 		if populateDB:
+			dbClient = MongoClient("mongodb://localhost:27017")
+			db = dbClient.ornaments
 			self.populateDB(db)
+			dbClient.close()
 
 		zf.close()
 

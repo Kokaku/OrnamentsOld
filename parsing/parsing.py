@@ -39,10 +39,7 @@ if args.quiet:
 	args.verbosity = False
 
 #Create the library
-dbClient = MongoClient("mongodb://localhost:27017")
-db = dbClient.ornaments
-lib = Library(srcDir, dstDir, args.maxParseBook, args.verbosity, args.quiet, args.populateDB, db)
-dbClient.close()
+lib = Library(srcDir, dstDir, args.maxParseBook, args.verbosity, args.quiet, args.populateDB)
 
 #Print statistics about parsed books
 if args.stats:
