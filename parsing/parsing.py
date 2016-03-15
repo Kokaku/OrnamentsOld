@@ -14,6 +14,7 @@ parser.add_argument('-q', '--quiet', help='Reduce output verbosity', action='sto
 parser.add_argument('-s', '--stats', help='Print statistics at the end', action='store_true')
 parser.add_argument('-db', '--populateDB', help='Populate the database with parsed data', action='store_true')
 parser.add_argument('-dst', '--destination', action="store", dest='destinationFolder', type=str, nargs='?', help='Destination folder for unzipped images')
+parser.add_argument('-t', '--thread', action="store", dest='numThread', type=int, nargs='?', help='Number of thread to proccess data')
 parser.add_argument('-n', '--maxBook', action="store", dest='maxParseBook', type=int, nargs='?', help='Maximum number of books to be parse')
 args = parser.parse_args()
 
@@ -39,7 +40,7 @@ if args.quiet:
 	args.verbosity = False
 
 #Create the library
-lib = Library(srcDir, dstDir, args.maxParseBook, args.verbosity, args.quiet, args.populateDB)
+lib = Library(srcDir, dstDir, args.numThread, args.maxParseBook, args.verbosity, args.quiet, args.populateDB)
 
 #Print statistics about parsed books
 if args.stats:

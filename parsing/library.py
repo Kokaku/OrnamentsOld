@@ -19,7 +19,7 @@ def processBook(args):
 
 class Library:
 
-	def __init__(self, srcDir, dstDir, maxParseBook, verbosity, quiet, populateDB):
+	def __init__(self, srcDir, dstDir, numThread, maxParseBook, verbosity, quiet, populateDB):
 		self.srcDir = srcDir
 		books = list()
 
@@ -33,8 +33,7 @@ class Library:
 			if maxParseBook != None and bookToProccessed >= maxParseBook:
 				break
 
-
-		threads = Pool(8)
+		threads = Pool(numThread if numThread != None else 8)
 		self.books = list()
 		bookToProccess = len(books)
 		for book in enumerate(threads.imap_unordered(processBook, books), 1):
