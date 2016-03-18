@@ -19,7 +19,7 @@ def processBook(args):
 
 class Library:
 
-	def __init__(self, srcDir, dstDir, numThread, maxParseBook, verbosity, quiet, populateDB):
+	def __init__(self, srcDir, dstDir, numThread, maxParseBook, verbosity, quiet, dbUrl, dbUser, dbPassword):
 		self.srcDir = srcDir
 		books = list()
 
@@ -27,7 +27,7 @@ class Library:
 		for filename in os.listdir(srcDir):
 			#Only zipped files are considered as book
 			if zipfile.is_zipfile(srcDir+filename):
-				book = [filename, srcDir+filename, dstDir, verbosity, populateDB]
+				book = [filename, srcDir+filename, dstDir, verbosity, dbUrl, dbUser, dbPassword]
 				books.append(book)
 
 			if maxParseBook != None and bookToProccessed >= maxParseBook:

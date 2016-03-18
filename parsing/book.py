@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import zipfile
 import sys
+import os
+import shutil
 from PIL import Image
 from lxml import etree
 from pymongo import MongoClient
@@ -12,7 +14,7 @@ googleBookSearchUrl = "https://www.googleapis.com/books/v1/volumes?q="
 googleBookUrl = "https://www.googleapis.com/books/v1/volumes/"
 
 class Book:
-	def __init__(self, filename, path, dstDir, verbosity, populateDB):
+	def __init__(self, filename, path, dstDir, verbosity, dbUrl, dbUser, dbPassword):
 		filename = filename.split('.')[0]
 		self.filename = filename
 		self.path = path
@@ -20,9 +22,15 @@ class Book:
 
 		self.initVariables()
 		self.bookId = self.filename.split('-')[1]
-		
+
 		if verbosity:
 			print filename
+
+		if dstDir != None:
+			imDir = dstDir+filename
+			if os.path.exists(imDir):
+			    shutil.rmtree(imDir)
+			os.makedirs(imDir)
 
 		zf = zipfile.ZipFile(path, 'r')
 		for zi in zf.infolist():
@@ -36,8 +44,10 @@ class Book:
 
 		if verbosity:
 			self.printParsedData()
-		if populateDB:
-			dbClient = MongoClient("mongodb://localhost:27017")
+		if dbUrl != None:
+			dbClient = MongoClient(dbUrl)
+			if dbUser != None and dbPassword != None:
+				dbClient.ornaments.authenticate(dbUser, dbPassword, source='admin')
 			db = dbClient.ornaments
 			self.populateDB(db)
 			dbClient.close()
