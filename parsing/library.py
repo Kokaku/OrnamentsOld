@@ -30,7 +30,7 @@ class Library:
 				book = [filename, srcDir+filename, dstDir, verbosity, dbUrl, dbUser, dbPassword]
 				books.append(book)
 
-			if maxParseBook != None and bookToProccessed >= maxParseBook:
+			if maxParseBook != None and len(books) >= maxParseBook:
 				break
 
 		threads = Pool(numThread if numThread != None else 8)
