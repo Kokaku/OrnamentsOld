@@ -42,6 +42,7 @@ if args.quiet:
 	args.verbosity = False
 
 #If ask to populate db then drop the current collection
+dbUrl = None
 if args.dbUrl != None:
 	if len(args.dbUrl.split(':')) == 1:
 		dbUrl = 'mongodb://{0}:27017'.format(args.dbUrl)

@@ -41,6 +41,8 @@ class Book:
 				self.handleTiff(zf, zi)
 			elif zi.filename.endswith(".xml"):
 				self.handleXml(zf, zi)
+			elif zi.filename.endswith(".txt"):
+				self.handleTxt(zf, zi)
 
 		if verbosity:
 			self.printParsedData()
@@ -62,6 +64,8 @@ class Book:
 		self.numJp2 = 0
 		self.numTif = 0
 		self.numIm = 0
+		self.numChar = 0
+		self.numLines = 0
 
 		self.titles = None
 		self.author = None
@@ -108,6 +112,11 @@ class Book:
 		if self.dstDir != None:
 			zf.extract(zi, self.dstDir+self.filename)
 
+	def handleTxt(self, zf, zi):
+		txt = zf.read(zi.filename)
+		lines = txt.split('\n')
+		self.numChar += len(txt)
+		self.numLines += len(lines)
 
 	def handleXml(self, zf, zi):
 		self.xmlSize += zi.file_size
@@ -212,6 +221,7 @@ class Book:
 				"publishedDate" : self.publishedDate,
 				"pageCount" : self.numIm,
 				"genre" : self.genre,
+				"avgCharPerLine" : self.numChar / self.numLines,
 				"lang" : self.lang,
 				"dimensions" : self.dimensions,
 				"notes" : self.notes,
