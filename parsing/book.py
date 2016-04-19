@@ -6,7 +6,6 @@ import shutil
 from PIL import Image
 from lxml import etree
 from pymongo import MongoClient
-from page import Page
 
 # This URL allow to search for books in the Google library
 googleBookSearchUrl = "https://www.googleapis.com/books/v1/volumes?q="
@@ -41,8 +40,8 @@ class Book:
 				self.handleTiff(zf, zi)
 			elif zi.filename.endswith(".xml"):
 				self.handleXml(zf, zi)
-			elif zi.filename.endswith(".txt"):
-				self.handleTxt(zf, zi)
+			#elif zi.filename.endswith(".txt"):
+				#self.handleTxt(zf, zi)
 
 		if verbosity:
 			self.printParsedData()
@@ -64,8 +63,6 @@ class Book:
 		self.numJp2 = 0
 		self.numTif = 0
 		self.numIm = 0
-		self.numChar = 0
-		self.numLines = 0
 
 		self.titles = None
 		self.author = None
@@ -111,12 +108,6 @@ class Book:
 		self.numIm += 1
 		if self.dstDir != None:
 			zf.extract(zi, self.dstDir+self.filename)
-
-	def handleTxt(self, zf, zi):
-		txt = zf.read(zi.filename)
-		lines = txt.split('\n')
-		self.numChar += len(txt)
-		self.numLines += len(lines)
 
 	def handleXml(self, zf, zi):
 		self.xmlSize += zi.file_size
@@ -178,12 +169,20 @@ class Book:
 					if admin != None:
 						admin = admin.split(" ")
 
+
+			txt = zf.read(pageId+".txt")
+			lines = txt.split('\n')
+			numChar = len(txt)
+			numLines = len(lines)
+			avgCharPerLine = numChar / numLines
+
 			self.pages.append({"_id" : pageId,
 					"url" : pageUrl,
 					"dpi" : dpi,
 					"seq" : seq,
 					"type" : admin,
-					"orderLabel" : orderLabel})
+					"orderLabel" : orderLabel,
+					"avgCharPerLine" : avgCharPerLine})
 
 
 	def parseGlrOaiDc(self, strFile):
@@ -221,7 +220,6 @@ class Book:
 				"publishedDate" : self.publishedDate,
 				"pageCount" : self.numIm,
 				"genre" : self.genre,
-				"avgCharPerLine" : self.numChar / self.numLines,
 				"lang" : self.lang,
 				"dimensions" : self.dimensions,
 				"notes" : self.notes,
