@@ -59,6 +59,7 @@ if args.dbUrl != None:
 
 	try:
 		dbClient.ornaments.drop_collection('books')
+		dbClient.close()
 	except:
 		print "Error, connection to the database is impossible. Most probably the url is wrong."
 		sys.exit()
