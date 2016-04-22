@@ -40,6 +40,8 @@ class Book:
 				self.handleTiff(zf, zi)
 			elif zi.filename.endswith(".xml"):
 				self.handleXml(zf, zi)
+			elif zi.filename == "pagedata.txt":
+				self.handlePageData(zf, zi);
 			#elif zi.filename.endswith(".txt"):
 				#self.handleTxt(zf, zi)
 
@@ -141,8 +143,8 @@ class Book:
 		admin = None
 		orderLabel = None
 		pageId = None
-		orderLabel = None
 		dpi = None
+		avgCharPerLine = None
 
 		metaData = etree.fromstring(strFile)
 		imagesData = metaData.xpath('//*[local-name() = "fileGrp"][@USE="image"]/child::*')
@@ -152,13 +154,8 @@ class Book:
 			if fileData != None:
 				pageFilename = fileData.items()[0][1]
 				pageId = pageFilename.split('.')[0]
-				try:
-					im = Image.open(zf.open(pageFilename))
-					dpi = im.info['dpi']
-					dpi = (float(dpi[0].numerator)/dpi[0].denominator, float(dpi[1].numerator)/dpi[1].denominator)
-				except:
-					dpi = None
-				pageUrl = "http://dhlabsrv4.epfl.ch/iiif_ornaments/bookm-{0}_{1}/full/full/0/default.jpg".format(self.bookId, pageId)
+				dpi = self.getImageDpi(zf, pageFilename)
+				pageUrl = self.getPageUrl(pageId)
 			pageXmlId = imageData.get("ID")
 			seq = imageData.get("SEQ")
 			if pageXmlId != None:
@@ -169,12 +166,7 @@ class Book:
 					if admin != None:
 						admin = admin.split(" ")
 
-
-			txt = zf.read(pageId+".txt")
-			lines = txt.split('\n')
-			numChar = len(txt)
-			numLines = len(lines)
-			avgCharPerLine = numChar / numLines
+			avgCharPerLine = self.getAvgCharPerLine(zf, pageId)
 
 			self.pages.append({"_id" : pageId,
 					"url" : pageUrl,
@@ -186,13 +178,78 @@ class Book:
 
 
 	def parseGlrOaiDc(self, strFile):
-		metaData = etree.fromstring(zf.read(zi.filename))
+		metaData = etree.fromstring(strFile)
 		self.titles = metaData.xpath('//*[local-name() = "title"]/text()')
 		self.author = metaData.xpath('//*[local-name() = "creator"]/text()')
 		self.publishers = metaData.xpath('//*[local-name() = "publisher"]/text()')
 		self.publishedDate = metaData.xpath('//*[local-name() = "date"]/text()')
 		self.lang = metaData.xpath('//*[local-name() = "language"]/text()')
 		self.notes = metaData.xpath('//*[local-name() = "description"]/text()')
+
+	def handlePageData(self, zf, zi):
+		seq = None
+		admin = None
+		orderLabel = None
+		pageId = None
+		dpi = None
+		avgCharPerLine = None
+		filesName = zf.namelist()
+
+		for line in (zf.read(zi.filename).split("\n")[1:]):
+			field = line.split(",")
+			pageId = field[0]
+			if pageId == '':
+				continue
+
+			if len(field) > 2:
+				orderLabel = field[2]
+			else:
+				orderLabel = None
+			if len(field) > 3:
+				admin = field[3:]
+			else:
+				orderLabel = []
+
+			pageId = str(pageId)
+			pageId = "00000000"[len(pageId):]+pageId
+			seq = pageId
+			pageFilename = pageId
+
+			if (pageFilename+'.tif') in filesName:
+				pageFilename += ".tif"
+			else:
+				pageFilename += ".jp2"
+
+			dpi = self.getImageDpi(zf, pageFilename)
+			pageUrl = self.getPageUrl(pageId)
+			avgCharPerLine = self.getAvgCharPerLine(zf, pageId)
+
+			self.pages.append({"_id" : pageId,
+					"url" : pageUrl,
+					"dpi" : dpi,
+					"seq" : seq,
+					"type" : admin,
+					"orderLabel" : orderLabel,
+					"avgCharPerLine" : avgCharPerLine})
+
+	def getImageDpi(self, zf, pageFilename):
+		try:
+			im = Image.open(zf.open(pageFilename))
+			dpi = im.info['dpi']
+			return (float(dpi[0].numerator)/dpi[0].denominator, float(dpi[1].numerator)/dpi[1].denominator)
+		except:
+			return None
+
+	def getPageUrl(self, pageId):
+		return "http://dhlabsrv4.epfl.ch/iiif_ornaments/bookm-{0}_{1}/full/full/0/default.jpg".format(self.bookId, pageId)
+
+	def getAvgCharPerLine(self, zf, pageId):
+		txt = zf.read(pageId+".txt")
+		lines = txt.split('\n')
+		numChar = len(txt)
+		numLines = len(lines)
+		return numChar / numLines
+
 
 	def printParsedData(self):
 		print "titles: {0}".format(self.titles)
@@ -212,18 +269,18 @@ class Book:
 
 		if search.count() != 0:
 			print "Book {0} has already an entry in the DB.".format(self.bookId)
-		else:
-			result = books.insert_one({"_id" : self.bookId,
-				"titles" : self.titles,
-				"author" : self.author,
-				"publishers" : self.publishers,
-				"publishedDate" : self.publishedDate,
-				"pageCount" : self.numIm,
-				"genre" : self.genre,
-				"lang" : self.lang,
-				"dimensions" : self.dimensions,
-				"notes" : self.notes,
-				"pages" : [page for page in self.pages]})
+		
+		result = books.insert_one({"_id" : self.bookId,
+			"titles" : self.titles,
+			"author" : self.author,
+			"publishers" : self.publishers,
+			"publishedDate" : self.publishedDate,
+			"pageCount" : self.numIm,
+			"genre" : self.genre,
+			"lang" : self.lang,
+			"dimensions" : self.dimensions,
+			"notes" : self.notes,
+			"pages" : [page for page in self.pages]})
 
 
 
