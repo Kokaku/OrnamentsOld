@@ -19,13 +19,17 @@ def processImage(imagePath, filename, dstDir, factor):
 			dbClient = MongoClient('mongodb://localhost:27017')
 			res = dbClient.ornaments.books.find({"_id": ids[0]})
 			if res.count() >= 1:
-				avgCharPerLine = res[0]['pages'][int(ids[1].split('.')[0])]['avgCharPerLine']
+				pageId = int(ids[1].split('.')[0])
+				try:
+					avgCharPerLine = res[0]['pages'][pageId]['avgCharPerLine']
+				except:
+					print "warning no page: {0} {1}".format(pageId, filename)
 
-			if avgCharPerLine < 20:
-				avgCharPerLine = 0
-				for page in res[0]['pages']:
-					avgCharPerLine += page['avgCharPerLine']
-				avgCharPerLine /= len(res[0]['pages'])
+				if avgCharPerLine < 20:
+					avgCharPerLine = 0
+					for page in res[0]['pages']:
+						avgCharPerLine += page['avgCharPerLine']
+					avgCharPerLine /= len(res[0]['pages'])
 
 			dbClient.close()
 
@@ -98,6 +102,7 @@ for filename in os.listdir(srcDir):
         imagePath = srcDir+filename
         image = [imagePath, filename, dstDir, factor]
         images.append(image)
+        print filename
 
 tMid = time.time()
 print "time mid: {0}".format(tMid - tStart)
