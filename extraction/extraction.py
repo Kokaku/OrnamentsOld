@@ -102,7 +102,6 @@ for filename in os.listdir(srcDir):
         imagePath = srcDir+filename
         image = [imagePath, filename, dstDir, factor]
         images.append(image)
-        print filename
 
 tMid = time.time()
 print "time mid: {0}".format(tMid - tStart)
