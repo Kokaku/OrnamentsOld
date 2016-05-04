@@ -35,7 +35,7 @@ for filename in os.listdir(no):
 total = positive + negative
 nbrFiles = 0
 truePositive = 0
-falseNefative = 0
+falseNegative = 0
 with open(srcFile) as f:
 	for line in f.readlines():
 		filename = line.rstrip()
@@ -43,16 +43,16 @@ with open(srcFile) as f:
 		if os.path.isfile(yes+filename):
 			truePositive += 1
 		else:
-			falseNefative += 1
+			falseNegative += 1
 			print "file not present: {0}".format(filename)
 
 
 print "Selectivity: {0:0.2f}%".format((positive*100.0)/total)
 if nbrFiles != 0:
 	print "True positive: {0:0.2f}%".format((truePositive*100.0)/nbrFiles)
-	print "False positive: {0:0.2f}%".format((falseNefative*100.0)/nbrFiles)
-	print "True negative: {0:0.2f}%".format(((negative - falseNefative)*100.0)/(total - nbrFiles))
-	print "False negative: {0:0.2f}%".format(((positive - truePositive)*100.0)/(total - nbrFiles))
+	print "False negative: {0:0.2f}%".format((falseNegative*100.0)/nbrFiles)
+	print "True negative: {0:0.2f}%".format(((negative - falseNegative)*100.0)/(total - nbrFiles))
+	print "False positive: {0:0.2f}%".format(((positive - truePositive)*100.0)/(total - nbrFiles))
 else:
 	print "No file expected, thus 100%"
 	
