@@ -89,31 +89,27 @@ def addBoxWithFun(boxes, rect, intersectFun):
                 hasIntersect = True
     boxes.append(rect)
 
-def getApproxTextSize(filename, imgSize, dbUrl, dbUser, dbPassword):
+def getApproxTextSize(filename, pageId, bookId, imgSize, dbUrl, dbUser, dbPassword):
     avgCharPerLine = 0
-    splitFilename = filename.split('-')
-    if splitFilename[0] == 'bookm' and len(splitFilename) == 2:
-        ids = splitFilename[1].split('_')
-        if(len(ids) == 2):
-            dbClient = MongoClient(dbUrl)
-            if args.dbUser != None and args.dbPassword != None:
-                dbClient.ornaments.authenticate(dbUser, dbPassword, source='admin')
-            res = dbClient.ornaments.books.find({"_id": ids[0]})
-            if res.count() >= 1:
-                pageId = int(ids[1].split('.')[0])
-                try:
-                    avgCharPerLine = res[0]['pages'][pageId]['avgCharPerLine']
-                except:
-                    avgCharPerLine = 0
-                    #print "warning no page: {0} {1}".format(pageId, filename)
+    dbClient = MongoClient(dbUrl)
+    if args.dbUser != None and args.dbPassword != None:
+        dbClient.ornaments.authenticate(dbUser, dbPassword, source='admin')
+    res = dbClient.ornaments.books.find({"_id": bookId})
+    if res.count() >= 1:
+        pageId = int(pageId)
+        try:
+            avgCharPerLine = res[0]['pages'][pageId]['avgCharPerLine']
+        except:
+            avgCharPerLine = 0
+            #print "warning no page: {0} {1}".format(pageId, filename)
 
-                if avgCharPerLine < 20:
-                    avgCharPerLine = 0
-                    for page in res[0]['pages']:
-                        avgCharPerLine += page['avgCharPerLine']
-                    avgCharPerLine /= len(res[0]['pages'])
+        if avgCharPerLine < 20:
+            avgCharPerLine = 0
+            for page in res[0]['pages']:
+                avgCharPerLine += page['avgCharPerLine']
+            avgCharPerLine /= len(res[0]['pages'])
 
-            dbClient.close()
+    dbClient.close()
 
     if avgCharPerLine < 20:
         #print "warning, less than 20 char per line {0}: {1}".format(avgCharPerLine, filename)
@@ -121,7 +117,7 @@ def getApproxTextSize(filename, imgSize, dbUrl, dbUser, dbPassword):
 
     return imgSize[1]/avgCharPerLine
 
-def processImage(imagePath, filename, dstDir, filterSize, dbUrl, dbUser, dbPassword, debugLevel):
+def processImage(imagePath, filename, pageId, bookId, dstDir, filterSize, dbUrl, dbUser, dbPassword, debugLevel):
     img = cv2.imread(imagePath,0)
 
     filterWidth = filterSize if filterSize%2==1 else filterSize+1
@@ -154,7 +150,7 @@ def processImage(imagePath, filename, dstDir, filterSize, dbUrl, dbUser, dbPassw
                 cv2.imwrite(dstDir+'page2.'+filename.split('.')[1], img)
 
         
-        approxTextSize =  getApproxTextSize(filename, imSize, dbUrl, dbUser, dbPassword)
+        approxTextSize =  getApproxTextSize(filename, pageId, bookId, imSize, dbUrl, dbUser, dbPassword)
         medianBoxes = getBoxes(median, filterWidth/4, 0, 0)
         vanillaBoxes = getBoxes(copy.copy(img), 20, 1.5*approxTextSize, 1.5*approxTextSize)
 
@@ -301,8 +297,16 @@ def getImageJobs(srcDir, sourceFile, files, dbUrl, dbUser, dbPassword, debugLeve
     for filename in os.listdir(srcDir):
         if filename.endswith('.jp2') or filename.endswith('.tif'):
             if sourceFile == None or filename in files:
+
+                splitFilename = filename.split('_')
+                if len(splitFilename) == 1:
+                    pageId = filename.split('.')[0]
+                    bookId = srcDir.split('/')[-2].split('-')[1]
+                else:
+                    pageId = splitFilename[1].split('.')[0]
+                    bookId = splitFilename[0].split('-')[1]
                 imagePath = srcDir+filename
-                image = [imagePath, filename, dstDir, filterSize, dbUrl, dbUser, dbPassword, debugLevel]
+                image = [imagePath, filename, pageId, bookId, dstDir, filterSize, dbUrl, dbUser, dbPassword, debugLevel]
                 images.append(image)
                 #processImageArgs(image)
     return images
