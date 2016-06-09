@@ -398,8 +398,8 @@ else:
     for bookFolder in os.listdir(srcDir):
         bookPath = srcDir+bookFolder+"/"
         if os.path.isdir(bookPath):
-            bookId = bookFolder.split('-')[1]
-            if not bookId in finishedBooks:
+            splitFolderName = bookFolder.split('-')
+            if splitFolderName[0] == 'bookm' and not splitFolderName[1] in finishedBooks:
                 images = getImageJobs(bookPath, args.sourceFile, files, dbUrl, args.dbUser, args.dbPassword, args.debug)
                 books.append([images, bookFolder, dbUrl, args.dbUser, args.dbPassword])
                 #processBook([images, bookFolder, dbUrl, args.dbUser, args.dbPassword])
