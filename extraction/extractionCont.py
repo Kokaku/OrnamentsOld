@@ -322,6 +322,7 @@ parser.add_argument('-s', '--size', action="store", dest='filterSize', type=int,
 parser.add_argument('-f', '--srcFile', action="store", dest='sourceFile', type=str, nargs='?', help='Source file that contain filename to process (filter other files)')
 parser.add_argument('-pm', '--pageMode', help='Activate page mode', action='store_true')
 parser.add_argument('-d', '--debug', action="store", dest='debug', type=int, nargs='?', help='Debug level')
+parser.add_argument('-r', '--restart', action="store", dest='restart', type=int, nargs='?', help='Delet previous output and start over')
 args = parser.parse_args()
 
 if args.sourceFile != None:
@@ -379,20 +380,29 @@ if not dstDir.endswith("/"):
 
 numThread = args.numThread
 tStart = time.time()
-if os.path.exists(dstDir):
+if  args.restart and os.path.exists(dstDir):
     shutil.rmtree(dstDir)
-os.makedirs(dstDir)
+if not os.path.exists(dstDir):
+    os.makedirs(dstDir)
 
 if args.pageMode:
     images = getImageJobs(srcDir, args.sourceFile, files, dbUrl, args.dbUser, args.dbPassword, args.debug)
 else:
+    finishedBooks = list()
+    for filename in os.listdir(dstDir):
+        bookId = filename.split('.')[0]
+        finishedBooks.append(bookId)
+    print "Analysed {0} books".format(len(finishedBooks))
+
     books = list()
     for bookFolder in os.listdir(srcDir):
         bookPath = srcDir+bookFolder+"/"
         if os.path.isdir(bookPath):
-            images = getImageJobs(bookPath, args.sourceFile, files, dbUrl, args.dbUser, args.dbPassword, args.debug)
-            books.append([images, bookFolder, dbUrl, args.dbUser, args.dbPassword])
-            #processBook([images, bookFolder, dbUrl, args.dbUser, args.dbPassword])
+            bookId = bookFolder.split('-')[1]
+            if not bookId in finishedBooks:
+                images = getImageJobs(bookPath, args.sourceFile, files, dbUrl, args.dbUser, args.dbPassword, args.debug)
+                books.append([images, bookFolder, dbUrl, args.dbUser, args.dbPassword])
+                #processBook([images, bookFolder, dbUrl, args.dbUser, args.dbPassword])
 
 #sys.exit()
 tMid = time.time()
